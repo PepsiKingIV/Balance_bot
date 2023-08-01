@@ -143,14 +143,14 @@ def action_choosing(message):
     elif message.text == 'Вывод данных':
         try:
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            btn1 = types.KeyboardButton("За определенный период в форме таблицы")
-            btn2 = types.KeyboardButton("Excel документ с записями за определенный период")
+            btn1 = types.KeyboardButton("За период в таблицы")
+            btn2 = types.KeyboardButton("Excel документ")
             btn3 = types.KeyboardButton("Вывод диаграммы")
             btn4 = types.KeyboardButton("Вывод статистики")
             back = types.KeyboardButton("Вернуться в меню")
-            msg = bot.reply_to(message, 'Выбирите что хотите получить', reply_markup=markup)
             markup.add(btn1, btn2, btn3, btn4, back)
-            bot.register_next_step_handler(msg, debit_or_credit)
+            msg = bot.reply_to(message, 'Выбирите что хотите получить', reply_markup=markup)
+            bot.register_next_step_handler(msg, period_data_select)
             logger.info(f"User {message.chat.id}: action_choosing is working properly. Message: {message}")
         except Exception as e:
             bot.reply_to(message, 'Произошла ошибка. Вы будите возращены в меню. Создатель уже занимается ее исправлением')
@@ -338,8 +338,8 @@ def select_priority(message):
                        type=users[f'{message.chat.id}'].get_data('type'),
                        debit=users[f'{message.chat.id}'].get_data('debit'),
                        priority= message.text)
-        users[f'{message.chat.id}'].clear_data()        
         msg = bot.reply_to(message, f"Запись создана : {users[f'{message.chat.id}'].get_data_list()}")
+        users[f'{message.chat.id}'].clear_data()        
         go_to_menu(message=message)
         logger.info(f"User {message.chat.id}: select_priority is working properly")
     except Exception as e:
@@ -349,37 +349,93 @@ def select_priority(message):
         return
     
     
-    
+    # За период в таблицы")
+    #         btn2 = types.KeyboardButton("Excel документ")
+    #         btn3 = types.KeyboardButton("Вывод диаграммы")
+    #         btn4 = types.KeyboardButton("Вывод статистики")
+    #         back = types.KeyboardButton("Вернуться в меню
 
 
 def period_data_select(message):
-    if message.text == 'За определенный период в форме таблицы':
-        try:
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            btn1 = types.KeyboardButton("За последние 7 дней")
-            btn2 = types.KeyboardButton("За последний месяц")
-            btn3 = types.KeyboardButton("За последние 3 месяца")
-            btn4 = types.KeyboardButton("За полгода")
-            btn5 = types.KeyboardButton("За год")
-            btn6 = types.KeyboardButton("Указать период")
-            back = types.KeyboardButton("Вернуться в меню")
-            msg = bot.reply_to(message, 'Выбирите что хотите получить', reply_markup=markup)
-            markup.add(btn1, btn2, btn3, btn4, back)
-            bot.register_next_step_handler(msg, select_date_2)
-            logger.info(f"User {message.chat.id}: period_data_select is working properly")
-        except Exception as e:
-            bot.reply_to(message, 'Произошла ошибка. Вы будите возращены в меню. Создатель уже занимается ее исправлением')
-            logger.exception(f"User {message.chat.id}: an error has occurred in period_data_select. Message: {message}")
+    if message.text == 'Вернуться в меню':
             go_to_menu(message=message)
             return
+    try:
+        users[f'{message.chat.id}'].set_data(index = 'function', value = f'{message.text}')
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton("За последние 7 дней")
+        btn2 = types.KeyboardButton("За последний месяц")
+        btn3 = types.KeyboardButton("За последние 3 месяца")
+        btn4 = types.KeyboardButton("За полгода")
+        btn5 = types.KeyboardButton("За год")
+        back = types.KeyboardButton("Вернуться в меню")
+        markup.add(btn1, btn2, btn3, btn4, btn5, back)
+        msg = bot.reply_to(message, 'Укажите период', reply_markup=markup)
+        bot.register_next_step_handler(msg, select_date_2)
+        logger.info(f"User {message.chat.id}: period_data_select is working properly")
+    except Exception as e:
+        bot.reply_to(message, 'Произошла ошибка. Вы будите возращены в меню. Создатель уже занимается ее исправлением')
+        logger.exception(f"User {message.chat.id}: an error has occurred in period_data_select. Message: {message}")
+        go_to_menu(message=message)
+        return
+    
+    
+def database_query(message): 
+            if message.text == 'За последние 7 дней':
+                data1 = db.data_getting(userID=message.chat.id, debit=True)
+                data2 = db.data_getting(userID=message.chat.id, debit=False)
+            else:
+                if message.text == 'За последний месяц':
+                    dayS = 31
+                if message.text == 'За последние 3 месяца':
+                    dayS = 31 * 3
+                if message.text == 'За полгода':
+                    dayS = 31 * 6 - 3
+                else: dayS = 31 * 12 - 6 # вычетаем 6 т.к. есть месяца с 31 и 30 днями
+                
+                data1 = db.data_getting(userID=message.chat.id, debit=True, 
+                                        date_from = str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
+                                        date_to = str(datetime.datetime.now().date()))
+                data2 = db.data_getting(userID=message.chat.id, debit=False,
+                                        date_from = str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
+                                        date_to = str(datetime.datetime.now().date()))
+
+            bot.send_message(message.chat.id, 'Дебит:')
+            str_ = ''
+            strLen = 10
+            for i in data1:
+                for j in i:
+                    if not f'{j}' == 'True':
+                        str_ += f'{j}'
+                        str_ += '\x20 \x20 \x20' + (strLen - len(f'{j}')) * '\x20' * 2 #ебаный пропорциональный шрифт 
+                bot.send_message(message.chat.id, str_)
+                str_ = ''
+            bot.send_message(message.chat.id, 'Кредит:')
+            str_ = ''
+            strLen = 10
+            for i in data2:
+                for j in i:
+                    if not f'{j}' == 'False':
+                        str_ += f'{j}'
+                        str_ += '\x20 \x20' + (strLen - len(f'{j}')) * '\x20' * 2 #ебаный пропорциональный шрифт х2
+                bot.send_message(message.chat.id, str_)
+                str_ = ''
+    
+    
     
 def select_date_2(message):
-    if message.text == 'За последние 7 дней':
-        try:
-            db.data_getting(userID=users[f'{message.chat.id}'], debit=True)
-        except Exception as e:
-            pass
-    
+    if message.text == 'Вернуться в меню':
+            go_to_menu(message=message)
+            return
+    try:          
+        database_query(message=message)
+        go_to_menu(message=message)
+        logger.info(f"User {message.chat.id}: select_date_2 is working properly")
+    except Exception as e:
+        bot.reply_to(message, 'Произошла ошибка. Вы будите возращены в меню. Создатель уже занимается ее исправлением')
+        logger.exception(f"User {message.chat.id}: an error has occurred in period_data_select. Message: {message}")
+        go_to_menu(message=message)
+        return
 
 
 bot.infinity_polling()

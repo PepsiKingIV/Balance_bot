@@ -77,8 +77,8 @@ class DB:
                 self.cursor.execute(f"INSERT INTO User{userID}Debit (date, time, amount, debit, type)\
                                 VALUES ('{date}', '{time}', {amount}, {debit}, '{type}')")
             else:
-                self.cursor.execute(f"INSERT INTO User{userID}Credit (date, time, amount, debit, type)\
-                                VALUES ('{date}', '{time}', {amount}, {debit}, '{type}', '{priority}')")
+                self.cursor.execute(f"INSERT INTO User{userID}Credit (date, time, amount, debit, type, priority)\
+                                VALUES ('{date}', '{time}', {amount}, {debit}, '{type}', {priority})")
             logger.info(f'Function dataRecord completed successfully. User{userID}')
             return True
         except Exception:
@@ -117,14 +117,14 @@ class DB:
         
         try:
             if type:
-                    self.cursor.execute(f"SELECT * FROM User{userID}Credit WHERE date >= {date_from} AND date <= {date_to} AND type = {type}")
+                    self.cursor.execute(f"SELECT * FROM User{userID}Credit WHERE date >= '{date_from}' AND date <= '{date_to}' AND type = {type}")
                     date = self.cursor.fetchall()
             else:
                 if debit:
-                    self.cursor.execute(f"SELECT * FROM User{userID}Debit WHERE date >= {date_from} AND date <= {date_to}")
+                    self.cursor.execute(f"SELECT * FROM User{userID}Debit WHERE date >= '{date_from}' AND date <= '{date_to}'")
                     date = self.cursor.fetchall()
                 else:
-                    self.cursor.execute(f"SELECT * FROM User{userID}Credit WHERE date >= {date_from} AND date <= {date_to}")
+                    self.cursor.execute(f"SELECT * FROM User{userID}Credit WHERE date >= '{date_from}' AND date <= '{date_to}'")
                     date = self.cursor.fetchall()
             logger.info(f'Function dataGetting completed successfully. User{userID}')
             return date
@@ -161,17 +161,17 @@ class DB:
         try:
             if debit:
                 if time: 
-                    self.cursor.execute(f"REMOVE * FROM user{userID}Debit WHERE amount = {amount} AND data = {date} AND time = {time}")
+                    self.cursor.execute(f"REMOVE * FROM user{userID}Debit WHERE amount = {amount} AND data = '{date}' AND time = {time}")
                     return True
                 else:
-                    self.cursor.execute(f"REMOVE * FROM user{userID}Debit WHERE amount = {amount} AND data = {date}")
+                    self.cursor.execute(f"REMOVE * FROM user{userID}Debit WHERE amount = {amount} AND data = '{date}'")
                     return True
             else:
                 if time: 
-                    self.cursor.execute(f"REMOVE * FROM user{userID}Credib WHERE amount = {amount} AND data = {date} AND time = {time}")
+                    self.cursor.execute(f"REMOVE * FROM user{userID}Credib WHERE amount = {amount} AND data = '{date}' AND time = {time}")
                     return True
                 else:
-                    self.cursor.execute(f"REMOVE * FROM user{userID}Credit WHERE amount = {amount} AND data = {date}")
+                    self.cursor.execute(f"REMOVE * FROM user{userID}Credit WHERE amount = {amount} AND data = '{date}'")
                     return True
         except Exception:
             logger.exception(f'Function dataGetting not completed. User{userID}')
@@ -201,10 +201,10 @@ class DB:
         """
         
         if debit: 
-            self.cursor.execute(f"SELECT * FROM User{userID}Debit WHERE date = {date} AND amount = {amount}")
+            self.cursor.execute(f"SELECT * FROM User{userID}Debit WHERE date = '{date}' AND amount = {amount}")
             date = self.cursor.fetchall()
         else:
-            self.cursor.execute(f"SELECT * FROM User{userID}Debit WHERE date = {date} AND amount = {amount}")
+            self.cursor.execute(f"SELECT * FROM User{userID}Debit WHERE date = '{date}' AND amount = {amount}")
             date = self.cursor.fetchall()
         return date
         

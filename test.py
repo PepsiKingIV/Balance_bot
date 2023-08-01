@@ -1,3 +1,5 @@
+import datetime
+
 if __name__ == '__main__':
 
     types1 = ['food', 'car', 'fun']
@@ -28,5 +30,5 @@ if __name__ == '__main__':
         msg2.append(i)
     
     print(msg2)
-
+    print('datetime.date(2023, 7, 28)')
  
