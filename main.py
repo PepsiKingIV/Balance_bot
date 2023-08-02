@@ -380,36 +380,40 @@ def get_excel(message):
     try:
         strList = database_query(message=message, debit= True, send_mess= False)
         firstStr = True
-        print(strList)
         for i in strList:
             if firstStr:
                 firstStr = False            
                 data1 = pd.DataFrame([[i[0], i[1], float(i[2]), i[4]]], columns=['date', 'time', 'amount', 'type'])
                 print(data1)
             data1.loc[int(data1.shape[0])] = [i[0], i[1], float(i[2]), i[4]]
-        data1.to_excel("output.xlsx", sheet_name='Debit', columns=['date', 'time', 'amount', 'type'])
+        data1.to_excel("Debit.xlsx", sheet_name='Debit', columns=['date', 'time', 'amount', 'type'])
+        path = '/Users/aleksandr/Documents/Programming/Python/telegram_bot_balance/Debit.xlsx'
+        bot.send_document(message.chat.id, open(rf'{path}', 'rb'))
+        os.remove(path)
         strList = database_query(message=message, debit= False, send_mess= False)
+        print(strList)
         firstStr = True
         for i in strList:
             if firstStr:
                 firstStr = False
-                data2 = pd.DataFrame([[i[0], i[1], float(i[2]), i[4]]], columns=['date', 'time', 'amount', 'type'])
-            data2.loc[int(data2.shape[0])] = [i[0], i[1], float(i[2]), i[4]]
-        data2.to_excel("output.xlsx", sheet_name='Credit', columns=['date', 'time', 'amount', 'type'])
-        bot.send_document(message.chat.id, document='output.xlsx', )
-        os.remove('output.xlsx')
+                data2 = pd.DataFrame([[i[0], i[1], float(i[2]), i[3], i[4]]], columns=['date', 'time', 'amount', 'type', 'priority'])
+            data2.loc[int(data2.shape[0])] = [i[0], i[1], float(i[2]), i[3], i[4]]
+        data2.to_excel("Credit.xlsx", sheet_name='Credit', columns=['date', 'time', 'amount', 'type', 'priority'])
+        path = '/Users/aleksandr/Documents/Programming/Python/telegram_bot_balance/Credit.xlsx'
+        bot.send_document(message.chat.id, open(rf'{path}', 'rb'))
+        os.remove(path)
         go_to_menu(message=message)
         logger.info(f"User {message.chat.id}: get_excel is working properly")
     except Exception as e:
         bot.reply_to(message, 'Произошла ошибка. Вы будите возращены в меню. Создатель уже занимается ее исправлением')
-        logger.exception(f"User {message.chat.id}: an error has occurred in period_data_select. Message: {message}")
+        logger.exception(f"User {message.chat.id}: an error has occurred in get_excel. Message: {message}")
         go_to_menu(message=message)
         return
     
     
 def database_query(message, send_mess = True, debit = True): 
     if message.text == 'За последние 7 дней':
-        data1 = db.data_getting(userID=message.chat.id, debit=True)
+        data1 = db.data_getting(userID=message.chat.id, debit=debit)
     else:
         if message.text == 'За последний месяц':
             dayS = 31
@@ -422,6 +426,7 @@ def database_query(message, send_mess = True, debit = True):
         data1 = db.data_getting(userID=message.chat.id, debit=debit, 
                                 date_from = str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
                                 date_to = str(datetime.datetime.now().date()))
+        print(data1)
     strList = []
     strLen = 10
     indent = '\x20'
@@ -441,8 +446,10 @@ def database_query(message, send_mess = True, debit = True):
         for i in data1:
             for j in i:
                 if not f'{j}' == ('False' or  'True'):
-                    str1.append(f'{j}')
-            
+                    if j == None:
+                        str1.append('0')
+                    else: 
+                        str1.append(f'{j}')
             strList.append(str1.copy())
             str1.clear()
     return strList
