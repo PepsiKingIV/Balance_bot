@@ -4,6 +4,8 @@ import datetime
 from database import DB
 from visualizer import Visualizer
 import logging
+import pandas as pd
+import os
 from User import telegram_user
 
 
@@ -349,12 +351,6 @@ def select_priority(message):
         return
     
     
-    # За период в таблицы")
-    #         btn2 = types.KeyboardButton("Excel документ")
-    #         btn3 = types.KeyboardButton("Вывод диаграммы")
-    #         btn4 = types.KeyboardButton("Вывод статистики")
-    #         back = types.KeyboardButton("Вернуться в меню
-
 
 def period_data_select(message):
     if message.text == 'Вернуться в меню':
@@ -380,55 +376,101 @@ def period_data_select(message):
         return
     
     
-def database_query(message): 
-            if message.text == 'За последние 7 дней':
-                data1 = db.data_getting(userID=message.chat.id, debit=True)
-                data2 = db.data_getting(userID=message.chat.id, debit=False)
-            else:
-                if message.text == 'За последний месяц':
-                    dayS = 31
-                if message.text == 'За последние 3 месяца':
-                    dayS = 31 * 3
-                if message.text == 'За полгода':
-                    dayS = 31 * 6 - 3
-                else: dayS = 31 * 12 - 6 # вычетаем 6 т.к. есть месяца с 31 и 30 днями
-                
-                data1 = db.data_getting(userID=message.chat.id, debit=True, 
-                                        date_from = str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
-                                        date_to = str(datetime.datetime.now().date()))
-                data2 = db.data_getting(userID=message.chat.id, debit=False,
-                                        date_from = str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
-                                        date_to = str(datetime.datetime.now().date()))
-
-            bot.send_message(message.chat.id, 'Дебит:')
-            str_ = ''
-            strLen = 10
-            for i in data1:
-                for j in i:
-                    if not f'{j}' == 'True':
-                        str_ += f'{j}'
-                        str_ += '\x20 \x20 \x20' + (strLen - len(f'{j}')) * '\x20' * 2 #ебаный пропорциональный шрифт 
-                bot.send_message(message.chat.id, str_)
-                str_ = ''
-            bot.send_message(message.chat.id, 'Кредит:')
-            str_ = ''
-            strLen = 10
-            for i in data2:
-                for j in i:
-                    if not f'{j}' == 'False':
-                        str_ += f'{j}'
-                        str_ += '\x20 \x20' + (strLen - len(f'{j}')) * '\x20' * 2 #ебаный пропорциональный шрифт х2
-                bot.send_message(message.chat.id, str_)
-                str_ = ''
+def get_excel(message):
+    try:
+        strList = database_query(message=message, debit= True, send_mess= False)
+        firstStr = True
+        print(strList)
+        for i in strList:
+            if firstStr:
+                firstStr = False            
+                data1 = pd.DataFrame([[i[0], i[1], float(i[2]), i[4]]], columns=['date', 'time', 'amount', 'type'])
+                print(data1)
+            data1.loc[int(data1.shape[0])] = [i[0], i[1], float(i[2]), i[4]]
+        data1.to_excel("output.xlsx", sheet_name='Debit', columns=['date', 'time', 'amount', 'type'])
+        strList = database_query(message=message, debit= False, send_mess= False)
+        firstStr = True
+        for i in strList:
+            if firstStr:
+                firstStr = False
+                data2 = pd.DataFrame([[i[0], i[1], float(i[2]), i[4]]], columns=['date', 'time', 'amount', 'type'])
+            data2.loc[int(data2.shape[0])] = [i[0], i[1], float(i[2]), i[4]]
+        data2.to_excel("output.xlsx", sheet_name='Credit', columns=['date', 'time', 'amount', 'type'])
+        bot.send_document(message.chat.id, document='output.xlsx', )
+        os.remove('output.xlsx')
+        go_to_menu(message=message)
+        logger.info(f"User {message.chat.id}: get_excel is working properly")
+    except Exception as e:
+        bot.reply_to(message, 'Произошла ошибка. Вы будите возращены в меню. Создатель уже занимается ее исправлением')
+        logger.exception(f"User {message.chat.id}: an error has occurred in period_data_select. Message: {message}")
+        go_to_menu(message=message)
+        return
     
     
-    
+def database_query(message, send_mess = True, debit = True): 
+    if message.text == 'За последние 7 дней':
+        data1 = db.data_getting(userID=message.chat.id, debit=True)
+    else:
+        if message.text == 'За последний месяц':
+            dayS = 31
+        if message.text == 'За последние 3 месяца':
+            dayS = 31 * 3
+        if message.text == 'За полгода':
+            dayS = 31 * 6 - 3
+        else: dayS = 31 * 12 - 6 # вычетаем 6 т.к. есть месяца с 31 и 30 днями
+        
+        data1 = db.data_getting(userID=message.chat.id, debit=debit, 
+                                date_from = str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
+                                date_to = str(datetime.datetime.now().date()))
+    strList = []
+    strLen = 10
+    indent = '\x20'
+    if send_mess:
+        str1 = ''
+        for i in data1:
+            for j in i:
+                if not f'{j}' == 'False' or not '{j}' == 'True':
+                    str1 += f'{j}'
+                    if send_mess:
+                        str1 += indent * 2 + (strLen - len(f'{j}')) * indent * 2 #ебаный пропорциональный шрифт 
+            strList.append(str1)                
+            str1 = ''
+    else:
+        str1 = []
+        strList = []
+        for i in data1:
+            for j in i:
+                if not f'{j}' == ('False' or  'True'):
+                    str1.append(f'{j}')
+            
+            strList.append(str1.copy())
+            str1.clear()
+    return strList
+        
+        
+        # За период в таблицы")
+        #     btn2 = types.KeyboardButton("Excel документ")
+        #     btn3 = types.KeyboardButton("Вывод диаграммы")
+        #     btn4 = types.KeyboardButton("Вывод статистики")
+        #     back = types.KeyboardButton("Вернуться в меню")
+        
+        
 def select_date_2(message):
     if message.text == 'Вернуться в меню':
             go_to_menu(message=message)
             return
     try:          
-        database_query(message=message)
+        if users[f'{message.chat.id}'].get_data('function') == 'За период в таблицы':
+            strList = database_query(message=message, debit= True)
+            bot.send_message(message.chat.id, 'Дебит')
+            for i in strList:
+                bot.send_message(message.chat.id, i)
+            strList = database_query(message=message, debit= False)
+            bot.send_message(message.chat.id, 'Кредит')
+            for i in strList:
+                bot.send_message(message.chat.id, i)
+        elif users[f'{message.chat.id}'].get_data('function') == 'Excel документ':
+            get_excel(message)
         go_to_menu(message=message)
         logger.info(f"User {message.chat.id}: select_date_2 is working properly")
     except Exception as e:
@@ -438,6 +480,7 @@ def select_date_2(message):
         return
 
 
+        
 bot.infinity_polling()
 
             
