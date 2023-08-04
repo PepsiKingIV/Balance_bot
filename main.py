@@ -6,6 +6,8 @@ from visualizer import Visualizer
 import logging
 import pandas as pd
 import os
+import time
+from threading import Thread
 from User import telegram_user
 
 
@@ -402,7 +404,6 @@ def get_excel(message):
         path = '/Users/aleksandr/Documents/Programming/Python/telegram_bot_balance/Credit.xlsx'
         bot.send_document(message.chat.id, open(rf'{path}', 'rb'))
         os.remove(path)
-        go_to_menu(message=message)
         logger.info(f"User {message.chat.id}: get_excel is working properly")
     except Exception as e:
         bot.reply_to(message, 'Произошла ошибка. Вы будите возращены в меню. Создатель уже занимается ее исправлением')
@@ -478,6 +479,11 @@ def select_date_2(message):
                 bot.send_message(message.chat.id, i)
         elif users[f'{message.chat.id}'].get_data('function') == 'Excel документ':
             get_excel(message)
+        elif users[f'{message.chat.id}'].get_data('function') == 'Вывод диаграммы':
+            th1 = Thread(target=make_diorama, args=[message, True])
+            th2 = Thread(target=make_diorama, args=[message, False])
+            th1.start()
+            th2.start()
         go_to_menu(message=message)
         logger.info(f"User {message.chat.id}: select_date_2 is working properly")
     except Exception as e:
@@ -486,30 +492,42 @@ def select_date_2(message):
         go_to_menu(message=message)
         return
 
+def make_diorama(message, debit = True):
+    dioramaData = {}
+    if debit:
+        usersTypes = users[f'{message.chat.id}'].get_types_debit()
+    else:
+        usersTypes = users[f'{message.chat.id}'].get_types_credit()
+    for i in usersTypes:
+        sum = 0    
+        if i == None:
+            continue 
+        data1 = db.data_getting(userID=message.chat.id, debit=debit, type=i)
+        for j in data1:
+            step = 0
+            for k in j:
+                step += 1
+                if step == 3:
+                    sum += float(str(k))
+        dioramaData[i] = round(sum, 2)
+    print(dioramaData)
+    types = []
+    amount = []
+    for i in dioramaData.keys():
+        if not dioramaData[i] == 0:
+            types.append(i)
+            amount.append(dioramaData[i])
+    path = '/Users/aleksandr/Documents/Programming/Python/telegram_bot_balance/' + \
+            Visualizer.pie_chart_building(types=types, amounts=amount)
+    if debit:
+        bot.send_message(message.chat.id, 'Дебит:')
+    else:
+        bot.send_message(message.chat.id, 'Кредит:')
+    bot.send_document(message.chat.id, open(rf'{path}', 'rb'))
+    os.remove(path)
+    
 
         
 bot.infinity_polling()
 
             
-            
-            
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

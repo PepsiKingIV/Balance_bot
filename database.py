@@ -116,16 +116,12 @@ class DB:
         """
         
         try:
-            if type:
-                    self.cursor.execute(f"SELECT * FROM User{userID}Credit WHERE date >= '{date_from}' AND date <= '{date_to}' AND type = {type}")
-                    date = self.cursor.fetchall()
+            if debit:
+                self.cursor.execute(f"SELECT * FROM User{userID}Debit WHERE date >= '{date_from}' AND date <= '{date_to}' AND type = '{type}'")
+                date = self.cursor.fetchall()
             else:
-                if debit:
-                    self.cursor.execute(f"SELECT * FROM User{userID}Debit WHERE date >= '{date_from}' AND date <= '{date_to}'")
-                    date = self.cursor.fetchall()
-                else:
-                    self.cursor.execute(f"SELECT * FROM User{userID}Credit WHERE date >= '{date_from}' AND date <= '{date_to}'")
-                    date = self.cursor.fetchall()
+                self.cursor.execute(f"SELECT * FROM User{userID}Credit WHERE date >= '{date_from}' AND date <= '{date_to}' AND type = '{type}'")
+                date = self.cursor.fetchall()
             logger.info(f'Function dataGetting completed successfully. User{userID}')
             return date
         except Exception:
