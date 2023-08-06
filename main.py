@@ -6,8 +6,7 @@ from visualizer import Visualizer
 import logging
 import pandas as pd
 import os
-import time
-from threading import Thread
+
 from User import telegram_user
 
 
@@ -480,10 +479,8 @@ def select_date_2(message):
         elif users[f'{message.chat.id}'].get_data('function') == 'Excel документ':
             get_excel(message)
         elif users[f'{message.chat.id}'].get_data('function') == 'Вывод диаграммы':
-            th1 = Thread(target=make_diorama, args=[message, True])
-            th2 = Thread(target=make_diorama, args=[message, False])
-            th1.start()
-            th2.start()
+            make_diorama(message=message, debit = True)
+            make_diorama(message=message, debit = False)
         go_to_menu(message=message)
         logger.info(f"User {message.chat.id}: select_date_2 is working properly")
     except Exception as e:
@@ -517,12 +514,10 @@ def make_diorama(message, debit = True):
         if not dioramaData[i] == 0:
             types.append(i)
             amount.append(dioramaData[i])
+            print(types)
+            print(amount)
     path = '/Users/aleksandr/Documents/Programming/Python/telegram_bot_balance/' + \
-            Visualizer.pie_chart_building(types=types, amounts=amount)
-    if debit:
-        bot.send_message(message.chat.id, 'Дебит:')
-    else:
-        bot.send_message(message.chat.id, 'Кредит:')
+    Visualizer.pie_chart_building(types=types, amounts=amount, debit= debit)
     bot.send_document(message.chat.id, open(rf'{path}', 'rb'))
     os.remove(path)
     

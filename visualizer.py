@@ -6,6 +6,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 import numpy as np
+import time
+from threading import Thread
 
 
 class Visualizer:
@@ -13,11 +15,16 @@ class Visualizer:
     def __init__(self) -> None:
         pass
     
-    def pie_chart_building(types, amounts):
+    def pie_chart_building(types, amounts, debit):
         colors = sns.cubehelix_palette(start=.5, rot=-.5)[0:len(amounts)]
-        plt.pie(amounts, labels = types, colors = colors)
+        if debit:
+            plt.title('Дебит', fontsize = 20)
+        else:
+            plt.title('Кредит', fontsize = 20)
+        plt.pie(amounts, labels = types, colors = colors, textprops={'fontsize': 14})
         path = f'pie_Chart{amounts[0]}.png'
         plt.savefig(path)
+        plt.close()
         return path
         
     def plotting(dates, amounts):
