@@ -28,17 +28,11 @@ class Visualizer:
         return path
         
     def plotting(dates, amounts):
-        polyModel = make_pipeline(PolynomialFeatures(7), LinearRegression())
-        dates = np.array(dates, dtype='datetime64')
-        amounts = np.array(amounts)
-        xfit = np.linspace(0,1,10)
-        polyModel.fit(dates[:, np.newaxis], amounts)
-        yfit = polyModel.predict(xfit[:, np.newaxis])
-        plt.xlim(dates[0], dates[-1])
-        plt.ylim(0, 1100)
-        plt.scatter(dates, amounts)
-        plt.plot(xfit, yfit)
-        plt.show()
+        plt.plot(dates, amounts)
+        path = f'pie_Chart{amounts[0]}.png'
+        plt.savefig(path)
+        plt.close()
+        return path
         
     def func():
         #написать функцию, которая будет подводить баланс и писать насколько расходы/доходы превысили

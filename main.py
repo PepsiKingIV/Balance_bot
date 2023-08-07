@@ -387,7 +387,7 @@ def get_excel(message):
                 data1 = pd.DataFrame([[i[0], i[1], float(i[2]), i[4]]], columns=['date', 'time', 'amount', 'type'])
                 print(data1)
             data1.loc[int(data1.shape[0])] = [i[0], i[1], float(i[2]), i[4]]
-        data1.to_excel("Debit.xlsx", sheet_name='Debit', columns=['date', 'time', 'amount', 'type'])
+        data1.to_excel("Debit.xlsx", sheet_name='Debit', columns=['date', 'time', 'amount', 'type'], index=False)
         path = '/Users/aleksandr/Documents/Programming/Python/telegram_bot_balance/Debit.xlsx'
         bot.send_document(message.chat.id, open(rf'{path}', 'rb'))
         os.remove(path)
@@ -399,7 +399,7 @@ def get_excel(message):
                 firstStr = False
                 data2 = pd.DataFrame([[i[0], i[1], float(i[2]), i[3], i[4]]], columns=['date', 'time', 'amount', 'type', 'priority'])
             data2.loc[int(data2.shape[0])] = [i[0], i[1], float(i[2]), i[3], i[4]]
-        data2.to_excel("Credit.xlsx", sheet_name='Credit', columns=['date', 'time', 'amount', 'type', 'priority'])
+        data2.to_excel("Credit.xlsx", sheet_name='Credit', columns=['date', 'time', 'amount', 'type', 'priority'], index=False)
         path = '/Users/aleksandr/Documents/Programming/Python/telegram_bot_balance/Credit.xlsx'
         bot.send_document(message.chat.id, open(rf'{path}', 'rb'))
         os.remove(path)
@@ -455,13 +455,6 @@ def database_query(message, send_mess = True, debit = True):
     return strList
         
         
-        # За период в таблицы")
-        #     btn2 = types.KeyboardButton("Excel документ")
-        #     btn3 = types.KeyboardButton("Вывод диаграммы")
-        #     btn4 = types.KeyboardButton("Вывод статистики")
-        #     back = types.KeyboardButton("Вернуться в меню")
-        
-        
 def select_date_2(message):
     if message.text == 'Вернуться в меню':
             go_to_menu(message=message)
@@ -481,6 +474,9 @@ def select_date_2(message):
         elif users[f'{message.chat.id}'].get_data('function') == 'Вывод диаграммы':
             make_diorama(message=message, debit = True)
             make_diorama(message=message, debit = False)
+        elif users[f'{message.chat.id}'].get_data('function') == 'Вывод статистики':
+            # statistics(message)
+            pass
         go_to_menu(message=message)
         logger.info(f"User {message.chat.id}: select_date_2 is working properly")
     except Exception as e:
@@ -491,6 +487,17 @@ def select_date_2(message):
 
 def make_diorama(message, debit = True):
     dioramaData = {}
+    if message.text == 'За последние 7 дней':
+        data1 = db.data_getting(userID=message.chat.id, debit=debit)
+    else:
+        if message.text == 'За последний месяц':
+            dayS = 31
+        if message.text == 'За последние 3 месяца':
+            dayS = 31 * 3
+        if message.text == 'За полгода':
+            dayS = 31 * 6 - 3
+        else: dayS = 31 * 12 - 6 # вычетаем 6 т.к. есть месяца с 31 и 30 днями
+        
     if debit:
         usersTypes = users[f'{message.chat.id}'].get_types_debit()
     else:
@@ -499,7 +506,9 @@ def make_diorama(message, debit = True):
         sum = 0    
         if i == None:
             continue 
-        data1 = db.data_getting(userID=message.chat.id, debit=debit, type=i)
+        data1 = db.data_getting(userID=message.chat.id, debit=debit, type=i,
+                                date_from = str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
+                                date_to = str(datetime.datetime.now().date()))
         for j in data1:
             step = 0
             for k in j:
@@ -507,15 +516,12 @@ def make_diorama(message, debit = True):
                 if step == 3:
                     sum += float(str(k))
         dioramaData[i] = round(sum, 2)
-    print(dioramaData)
     types = []
     amount = []
     for i in dioramaData.keys():
         if not dioramaData[i] == 0:
             types.append(i)
             amount.append(dioramaData[i])
-            print(types)
-            print(amount)
     path = '/Users/aleksandr/Documents/Programming/Python/telegram_bot_balance/' + \
     Visualizer.pie_chart_building(types=types, amounts=amount, debit= debit)
     bot.send_document(message.chat.id, open(rf'{path}', 'rb'))
