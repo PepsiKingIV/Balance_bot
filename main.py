@@ -475,8 +475,7 @@ def select_date_2(message):
             make_diorama(message=message, debit = True)
             make_diorama(message=message, debit = False)
         elif users[f'{message.chat.id}'].get_data('function') == 'Вывод статистики':
-            # statistics(message)
-            pass
+            statistics(message, debit=True)
         go_to_menu(message=message)
         logger.info(f"User {message.chat.id}: select_date_2 is working properly")
     except Exception as e:
@@ -524,11 +523,110 @@ def make_diorama(message, debit = True):
             amount.append(dioramaData[i])
     path = '/Users/aleksandr/Documents/Programming/Python/telegram_bot_balance/' + \
     Visualizer.pie_chart_building(types=types, amounts=amount, debit= debit)
-    bot.send_document(message.chat.id, open(rf'{path}', 'rb'))
+    bot.send_photo(message.chat.id, open(rf'{path}', 'rb'))
     os.remove(path)
     
-
+def statistics(message, debit = True):
+    if message.text == 'За последние 7 дней':
+        dayS = 7
+    else:
+        if message.text == 'За последний месяц':
+            dayS = 31
+        if message.text == 'За последние 3 месяца':
+            dayS = 31 * 3
+        if message.text == 'За полгода':
+            dayS = 31 * 6 - 3
+        else: dayS = 31 * 12 - 6 # вычетаем 6 т.к. есть месяца с 31 и 30 днями
         
+    periodDebit = 0
+    periodCredit = 0
+    
+    data1 = db.data_getting(userID=message.chat.id, debit=True,
+                             date_from = str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
+                             date_to = str(datetime.datetime.now().date()))
+    
+    for j in data1:
+        step = 0
+        for k in j:
+            step += 1
+            if step == 3:
+                periodDebit += (float(str(k)))
+    
+    data1 = db.data_getting(userID=message.chat.id, debit=False,
+                                date_from = str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
+                                date_to = str(datetime.datetime.now().date()))
+    
+    for j in data1:
+        step = 0
+        for k in j:
+            step += 1
+            if step == 3:
+                periodCredit += (float(str(k)))
+           
+    previousMonthDebit = 0
+    previousMonthCredit = 0
+                
+    data2 = db.data_getting(userID=message.chat.id, debit=True,
+                                date_from = str(datetime.datetime.now() - datetime.timedelta(dayS + dayS * 2))[0:10:],
+                                date_to = str(datetime.datetime.now() - datetime.timedelta(dayS * 2))[0:10:])
+    
+    for j in data1:
+        step = 0
+        for k in j:
+            step += 1
+            if step == 3:
+                previousMonthDebit += (float(str(k)))
+                
+    data2 = db.data_getting(userID=message.chat.id, debit=True,
+                                date_from = str(datetime.datetime.now() - datetime.timedelta(dayS + dayS * 2))[0:10:],
+                                date_to = str(datetime.datetime.now() - datetime.timedelta(dayS * 2))[0:10:])
+    
+    for j in data1:
+        step = 0
+        for k in j:
+            step += 1
+            if step == 3:
+                previousMonthCredit += (float(str(k)))
+                
+    amount = [] 
+    date = []               
+                
+    for i in range(12):
+        data3 = db.data_getting(userID=message.chat.id, debit=True,
+                                date_from = str(datetime.datetime.now() - datetime.timedelta(dayS + i * 30))[0:10:],
+                                date_to = str(datetime.datetime.now() - datetime.timedelta(i * 30))[0:10:])
+        for j in data3:
+            step = 0
+            for k in j:
+                step += 1
+                if step == 3:
+                    amount.append(float(str(k)))
+                if step == 1:
+                    date.append(f'{k}')
+    if periodDebit > previousMonthDebit:
+        bot.send_message(message.chat.id, f'В прошлом расчетном периоде вы заработали меньше, нежели в текущем. \
+Разница составила: {round(periodDebit - previousMonthDebit, 2)}')
+    else:
+        bot.send_message(message.chat.id, f'В прошлом расчетном периоде вы заработали больше, нежели в текущем. \
+Разница составила: {round(previousMonthDebit - periodDebit,2)}')
+    if periodCredit < previousMonthCredit:
+        bot.send_message(message.chat.id, f'В прошлом расчетном периоде вы потратили больше, нежели в текущем. \
+Разница составила: {round(periodCredit - previousMonthCredit, 2)}')
+    else:
+        bot.send_message(message.chat.id, f'В прошлом расчетном периоде вы потратили меньше, нежели в текущем. \
+Разница составила: {round(previousMonthCredit - periodCredit, 2)}')
+        
+    bot.send_message(message.chat.id, f'За выбранный период было заработано: {round(periodDebit, 2)}')
+    bot.send_message(message.chat.id, f'За выбранный период было потрачено: {round(periodCredit, 2)}')
+    if not int(periodCredit) == int(periodDebit):
+        bot.send_message(message.chat.id, f'Баланс не сошелся на {round(abs(periodDebit - periodCredit), 2)}')
+
+    path = '/Users/aleksandr/Documents/Programming/Python/telegram_bot_balance/' + \
+    Visualizer.plotting(dates=date, amounts=amount)
+    bot.send_photo(message.chat.id, open(rf'{path}', 'rb'))
+    os.remove(path)
+
+
 bot.infinity_polling()
 
             

@@ -21,7 +21,7 @@ class Visualizer:
             plt.title('Дебит', fontsize = 20)
         else:
             plt.title('Кредит', fontsize = 20)
-        plt.pie(amounts, labels = types, colors = colors, textprops={'fontsize': 14})
+        plt.pie(amounts, labels = types, colors = colors, textprops={'fontsize': 14}, autopct='%1.1f%%')
         path = f'pie_Chart{amounts[0]}.png'
         plt.savefig(path)
         plt.close()
