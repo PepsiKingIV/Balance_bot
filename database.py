@@ -25,6 +25,7 @@ class DB:
                 dbname='Balance', user='aleksandr', host='127.0.0.1', port='5432')
             self.conn.autocommit = True
             self.cursor = self.conn.cursor()
+            self.cursor.execute(f'CREATE TABLE Users (ID integer, ban boolean, Debit_Type text ARRAY , Credit_Type text ARRAY)')
             logger.info('the connection to the database was successful.')
         except Exception:
             logger.exception('failed to connect to the database')
@@ -137,7 +138,7 @@ class DB:
             return None
 
         
-    def data_delete(self, userID, debit, date, amount, time = None):
+    def data_delete(self, userID, debit, date, amount, type):
         
         """
         The method deletes a record from the database. The record is selected by date and price.
@@ -155,8 +156,8 @@ class DB:
         :param amount: the entry with the specified price will be deleted
         :type type: :obj:`str`
         
-        :param time: the record with the specified time will be deleted, default None
-        :type time: :obj:`str`, optional
+        :param type: type of debit(salary, dividends) or credit (food, transport). The user defines the list of types himself. Default None
+        :type type: :obj:`str`
 
         :return: Returns True if the operation is successful, otherwise False
         :rtype: :obj:`boolean` 
@@ -164,19 +165,11 @@ class DB:
         
         try:
             if debit:
-                if time: 
-                    self.cursor.execute(f"REMOVE * FROM user{userID}Debit WHERE amount = {amount} AND data = '{date}' AND time = {time}")
-                    return True
-                else:
-                    self.cursor.execute(f"REMOVE * FROM user{userID}Debit WHERE amount = {amount} AND data = '{date}'")
-                    return True
+                    self.cursor.execute(f"DELETE FROM user{userID}Debit WHERE amount = {amount} AND date = '{date}' AND type = '{type}'")
             else:
-                if time: 
-                    self.cursor.execute(f"REMOVE * FROM user{userID}Credib WHERE amount = {amount} AND data = '{date}' AND time = {time}")
-                    return True
-                else:
-                    self.cursor.execute(f"REMOVE * FROM user{userID}Credit WHERE amount = {amount} AND data = '{date}'")
-                    return True
+                    self.cursor.execute(f"DELETE FROM user{userID}Credib WHERE amount = {amount} AND date = '{date}' AND type = '{type}'")
+            logger.info(f'Function data_delete completed successfully. User{userID}')
+            return True
         except Exception:
             logger.exception(f'Function dataGetting not completed. User{userID}')
             return False
@@ -211,6 +204,69 @@ class DB:
             self.cursor.execute(f"SELECT * FROM User{userID}Debit WHERE date = '{date}' AND amount = {amount}")
             date = self.cursor.fetchall()
         return date
+        
+    def record_types(self, userID, types, debit):
+        try:
+            self.cursor.execute(f"SELECT * FROM Users WHERE ID = {userID}")
+            data = self.cursor.fetchall()
+            DebitType = []
+            CreditType = []
+            Nan = '{Nan}'
+            if len(data) == 0:
+                if debit:
+                    self.cursor.execute(f"INSERT INTO USERS (ID, ban, Debit_Type, Credit_Type)\
+                                        VALUES ({userID}, {False}, '{Nan}'::text[], '{Nan}'::text[])")
+                else:
+                    self.cursor.execute(f"INSERT INTO USERS (ID, ban, Debit_Type, Credit_Type)\
+                                        VALUES ({userID}, {False}, '{Nan}'::text[], '{Nan}'::text[])")
+            if len(data) != 0:
+                if debit:
+                    if data[0][2][0] != 'Nan':
+                        if type(types) == type(list()): 
+                            for i in data[0][2][0]:
+                                types.append(i)
+                        else:
+                            types.append(data[0][2][0])
+                    for i in types:
+                        DebitType.append(i)
+                    unique_types = set(DebitType)
+                    DebitType = []
+                    DebitStr = '{'
+                    while unique_types:
+                        DebitStr += unique_types.pop()
+                        if len(unique_types) != 0:
+                            DebitStr += ','
+                    DebitStr += '}'
+                    self.cursor.execute(f"UPDATE users SET Debit_Type = '{DebitStr}' WHERE ID = {userID} RETURNING Debit_Type, Credit_Type;")
+                    data = self.cursor.fetchall()
+                else:
+                    if data[0][3][0] != 'Nan':
+                        print(data[0][3][0])
+                        if type(types) == type(list()): 
+                            for i in data[0][3]:
+                                types.append(i)
+                        else:
+                            types.append(data[0][3])
+                        print(types)
+                    for i in types:
+                        CreditType.append(i)
+                    unique_types = set(CreditType)
+                    CreditType = []
+                    CreditStr = '{'
+                    while unique_types:
+                        CreditStr += unique_types.pop()
+                        if len(unique_types) != 0:
+                            CreditStr += ','
+                    CreditStr += '}'
+                    print(CreditStr)
+                    self.cursor.execute(f"UPDATE users SET Credit_Type = '{CreditStr}' WHERE ID = {userID} RETURNING Debit_Type, Credit_Type;")
+                    data = self.cursor.fetchall()
+                    logger.info(f'Function record_types completed successfully. User{userID}')
+                    return data
+        except Exception as e:
+            logger.exception(f'Function record_types not completed. User{userID}')
+            print(e)
+            return 
         
             
 

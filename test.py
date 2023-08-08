@@ -31,6 +31,8 @@ if __name__ == '__main__':
     
     print(msg2)
     print('datetime.date(2023, 7, 28)')
+    fds = {'1' : 1, '2' : 2, '3' : 3}
  #datetime.date(2023, 7, 28), datetime.time(16, 32, 3), Decimal('23343.85'), True, 'инвестиции'
-    for i in range(5):
+    for i, j in fds, range(3):
         print(i)
+        print(j)
