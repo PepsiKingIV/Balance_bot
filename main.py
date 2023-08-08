@@ -33,6 +33,7 @@ def go_to_menu(message):
     btn1 = types.KeyboardButton("Запись данных")
     btn2 = types.KeyboardButton("Вывод данных")
     btn3 = types.KeyboardButton("Удаление данных")
+    users[f'{message.chat.id}'].clear_data()
     markup.add(btn1, btn2, btn3)
     msg = bot.reply_to(message, 'Выбирите нужное вам действие', reply_markup=markup)
     bot.register_next_step_handler(msg, action_choosing)       
@@ -43,7 +44,7 @@ def send_welcome(message):
     try:
         user = telegram_user(chatID=message.chat.id, name=message.from_user.first_name)
         db.create_new_table(message.chat.id)
-        db.record_types(userID=message.chat.id, types = ['aye'], debit=True)
+        db.record_types(userID=message.chat.id, types = [''], debit=True)
         users[f'{message.chat.id}'] = user
         msg = bot.reply_to(message, '''\
 Приветствую. Я бот для ведения расходов и доходов.
@@ -165,8 +166,10 @@ def action_choosing(message):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("Доход")
             btn2 = types.KeyboardButton("Расход")
+            btn3 = types.KeyboardButton("Тип расхода")
+            btn4 = types.KeyboardButton("Тип дохода")
             back = types.KeyboardButton("Вернуться в меню")
-            markup.add(btn1, btn2, back)
+            markup.add(btn1, btn2, btn3, btn4, back)
             users[f'{message.chat.id}'].set_data(index = "delete", value = True)
             msg = bot.reply_to(message, 'Укажите какую запись хотите удалить, доход/расход', reply_markup=markup)
             bot.register_next_step_handler(msg, debit_or_credit)
@@ -180,11 +183,11 @@ def action_choosing(message):
         
         
 def debit_or_credit(message):
-    if message.text == 'Вернуться в меню':
-        go_to_menu(message=message)
-        return
-    elif message.text == 'Доход':
-        try:
+    try:
+        if message.text == 'Вернуться в меню':
+            go_to_menu(message=message)
+            return
+        elif message.text == 'Доход':
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("Сегодня")
             back = types.KeyboardButton("Вернуться в меню")
@@ -192,14 +195,7 @@ def debit_or_credit(message):
             msg = bot.reply_to(message, 'Укажите дату операции. Формат ГГГГ-ММ-ДД, пример: 2001-01-01', reply_markup=markup)
             bot.register_next_step_handler(msg, select_date_1)
             users[f'{message.chat.id}'].set_data(index = "debit", value = True)
-            logger.info(f"User {message.chat.id}: debit_or_cradit is working properly. Message: {message}")
-        except Exception as e:
-            bot.reply_to(message, 'Произошла ошибка. Вы будите возращены в меню. Создатель уже занимается ее исправлением')
-            logger.exception(f"User {message.chat.id}: an error has occurred in debit_or_credit. Message: {message}")
-            go_to_menu(message=message)
-            return
-    elif message.text == 'Расход':
-        try:
+        elif message.text == 'Расход':
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("Сегодня")
             back = types.KeyboardButton("Вернуться в меню")
@@ -207,12 +203,30 @@ def debit_or_credit(message):
             msg = bot.reply_to(message, 'Укажите дату операции. Формат ГГГГ-ММ-ДД, пример: 2001-01-01', reply_markup=markup)
             bot.register_next_step_handler(msg, select_date_1)
             users[f'{message.chat.id}'].set_data(index = "debit", value = False)
-            logger.info(f"User {message.chat.id}: debit_or_cradit is working properly. Message: {message}")
-        except Exception as e:
-            bot.reply_to(message, 'Произошла ошибка. Вы будите возращены в меню. Создатель уже занимается ее исправлением')
-            logger.exception(f"User {message.chat.id}: an error has occurred in debit_or_credit. Message: {message}")
-            go_to_menu(message=message)
-            return
+        elif message.text == 'Тип расхода':
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            users[f'{message.chat.id}'].set_data(index = 'debit', value = False)
+            for i in users[f'{message.chat.id}'].get_types_credit():
+                markup.add(i)
+            back = types.KeyboardButton("Вернуться в меню")
+            markup.add(back)
+            msg = bot.reply_to(message, f"Укажите категорию: {users[f'{message.chat.id}'].get_types_credit()}", reply_markup=markup)
+            bot.register_next_step_handler(msg, delete_type)
+        elif message.text == 'Тип дохода':
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            users[f'{message.chat.id}'].set_data(index = 'debit', value = True)
+            for i in users[f'{message.chat.id}'].get_types_debit():
+                    markup.add(i)
+            back = types.KeyboardButton("Вернуться в меню")
+            markup.add(back)
+            msg = bot.reply_to(message, f"Укажите категорию: {users[f'{message.chat.id}'].get_types_debit()}", reply_markup=markup)
+            bot.register_next_step_handler(msg, delete_type)
+        logger.info(f"User {message.chat.id}: debit_or_cradit is working properly. Message: {message}")
+    except Exception as e:
+        bot.reply_to(message, 'Произошла ошибка. Вы будите возращены в меню. Создатель уже занимается ее исправлением')
+        logger.exception(f"User {message.chat.id}: an error has occurred in debit_or_credit. Message: {message}")
+        go_to_menu(message=message)
+        return
             
     
 def select_date_1(message):
@@ -687,6 +701,21 @@ def delete_data_step2(message):
         go_to_menu(message=message)
         return
 
+def delete_type(message):
+    try:
+        if message.text == 'Вернуться в меню':
+            go_to_menu(message=message)
+            return
+        
+        db.type_record_delete(userID=message.chat.id, debit= users[f'{message.chat.id}'].get_data(index = 'debit'), type=message.text)
+        go_to_menu(message=message)
+        return
+    except Exception as e:
+        bot.reply_to(message, 'Произошла ошибка. Вы будите возращены в меню. Создатель уже занимается ее исправлением')
+        logger.exception(f"User {message.chat.id}: an error has occurred in delete_type. Message: {message}")
+        go_to_menu(message=message)
+        return
+        
 bot.infinity_polling()
 
             

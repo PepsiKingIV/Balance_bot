@@ -22,10 +22,10 @@ class telegram_user:
         self.chatID = chatID
         
     def get_types_credit(self):
-        return self.types_credit
+        return self.types_credit.copy()
     
     def get_types_debit(self):
-        return self.types_debit
+        return self.types_debit.copy()
         
     def append_types_credit(self, types):
         if type(types) == type([]):

@@ -184,14 +184,13 @@ class DB:
         :type userID: :obj:`str`
         
         :param debit: A logical variable corresponding to a debit or credit. Accordingly, True if debit, False if credit
-                      If the required type of expenses is specified, then the Debit parameter can be omitted.
         :type debit: :obj:`boolean`
 
         :param date: the record with the specified date will be deleted
         :type time: :obj:`str`
         
         :param amount: The entry with the specified price will be deleted
-        :type type: :obj:`str`
+        :type amount: :obj:`str`
 
         :return: List of expense or income records
         :rtype: :obj:`list` (list of tuple) if the request was successful.
@@ -206,11 +205,28 @@ class DB:
         return date
         
     def record_types(self, userID, types, debit):
+        
+        """
+        A function designed to record new types of expenses and income.
+        The first call creates an entry in the database.
+        
+        :param userID: ID of the user who creates the record. The ID is provided by telegram
+        :type userID: :obj:`str`
+        
+        :param debit: A logical variable corresponding to a debit or credit. Accordingly, True if debit, False if credit
+        :type debit: :obj:`boolean`
+        
+        :param types: список типов либо одиночный тип. 
+        :type types: :obj:`str` or :obj:`list`
+
+        :return: Returns True if the operation is successful, otherwise False
+        :rtype: :obj:`boolean` 
+        """
+        
         try:
             self.cursor.execute(f"SELECT * FROM Users WHERE ID = {userID}")
             data = self.cursor.fetchall()
-            DebitType = []
-            CreditType = []
+            Types = []
             Nan = '{Nan}'
             if len(data) == 0:
                 if debit:
@@ -221,52 +237,57 @@ class DB:
                                         VALUES ({userID}, {False}, '{Nan}'::text[], '{Nan}'::text[])")
             if len(data) != 0:
                 if debit:
-                    if data[0][2][0] != 'Nan':
-                        if type(types) == type(list()): 
-                            for i in data[0][2][0]:
-                                types.append(i)
-                        else:
-                            types.append(data[0][2][0])
-                    for i in types:
-                        DebitType.append(i)
-                    unique_types = set(DebitType)
-                    DebitType = []
-                    DebitStr = '{'
-                    while unique_types:
-                        DebitStr += unique_types.pop()
-                        if len(unique_types) != 0:
-                            DebitStr += ','
-                    DebitStr += '}'
-                    self.cursor.execute(f"UPDATE users SET Debit_Type = '{DebitStr}' WHERE ID = {userID} RETURNING Debit_Type, Credit_Type;")
-                    data = self.cursor.fetchall()
+                    paramDebit = 'Debit_Type'
+                    index = 2
                 else:
-                    if data[0][3][0] != 'Nan':
-                        print(data[0][3][0])
-                        if type(types) == type(list()): 
-                            for i in data[0][3]:
-                                types.append(i)
-                        else:
-                            types.append(data[0][3])
-                        print(types)
-                    for i in types:
-                        CreditType.append(i)
-                    unique_types = set(CreditType)
-                    CreditType = []
-                    CreditStr = '{'
-                    while unique_types:
-                        CreditStr += unique_types.pop()
-                        if len(unique_types) != 0:
-                            CreditStr += ','
-                    CreditStr += '}'
-                    print(CreditStr)
-                    self.cursor.execute(f"UPDATE users SET Credit_Type = '{CreditStr}' WHERE ID = {userID} RETURNING Debit_Type, Credit_Type;")
-                    data = self.cursor.fetchall()
-                    logger.info(f'Function record_types completed successfully. User{userID}')
-                    return data
+                    paramDebit = 'Credit_Type'
+                    index = 3
+                if data[0][index][0] != 'Nan':
+                    for i in data[0][index]:
+                        types.append(i)
+                for i in types:
+                    Types.append(i)
+                unique_types = set(Types)
+                Types = []
+                TypesStr = '{'
+                while unique_types:
+                    TypesStr += unique_types.pop()
+                    if len(unique_types) != 0:
+                        TypesStr += ','
+                TypesStr += '}'
+                self.cursor.execute(f"UPDATE users SET {paramDebit} = '{TypesStr}' WHERE ID = {userID} RETURNING Debit_Type, Credit_Type;")
+                data = self.cursor.fetchall()
+                logger.info(f'Function record_types completed successfully. User{userID}')
+                return True
         except Exception as e:
             logger.exception(f'Function record_types not completed. User{userID}')
-            print(e)
-            return 
+            return False
         
+        
+    def type_record_delete(self, userID, debit, type):
+        try:
+            self.cursor.execute(f"SELECT * FROM Users WHERE ID = {userID}")
+            data = self.cursor.fetchall()
+            newData = '{'
+            index = 3
+            paramDebit = 'Credit_Type'
+            if debit:
+                index = 2
+                paramDebit = 'Debit_Type'
+            for i in range(len(data[0][index])):
+                print(data[0][index][i], type)
+                if data[0][index][i] != type:
+                    newData += data[0][index][i]
+                    if i + 1 != len(data[0][index]):
+                        newData += ','
+            newData += '}'
+            self.cursor.execute(f"UPDATE users SET {paramDebit} = '{newData}' WHERE ID = {userID} RETURNING Debit_Type, Credit_Type;")
+            data = self.cursor.fetchall()
+            logger.info(f'Function type_record_delete completed successfully. User{userID}')
+            return True
+        except Exception as e:
+            logger.exception(f'Function type_record_delete not completed. User{userID}')
+            return False
             
+        
 
