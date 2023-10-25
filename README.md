@@ -6,3 +6,8 @@ Recently, I got the idea to keep expenses and income. There are some good apps i
 4. The creator wanted to write some interesting project for him, integrate a database into the service.
 
 So I decided to make my bot in telegram.
+
+TODO:
+- switch to SQLAlchemy Core
+- refactoring
+- integration with a web service with the same functionality
