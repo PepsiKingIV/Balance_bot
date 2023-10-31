@@ -2,9 +2,6 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('agg')
 import seaborn as sns
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import make_pipeline
 import numpy as np
 import time
 from threading import Thread
