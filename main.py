@@ -45,8 +45,8 @@ def go_to_menu(message):
 def send_welcome(message):
     try:
         user = telegram_user(chatID=message.chat.id, name=message.from_user.first_name)
-        db.create_new_table(message.chat.id)
-        db.record_types(userID=message.chat.id, types=[""], debit=True)
+        db.create_new_table()
+        db.add_user(telegram_id=message.chat.id, ban=False)
         users[f"{message.chat.id}"] = user
         msg = bot.reply_to(
             message,
@@ -91,7 +91,7 @@ def select_types_debit(message):
             users[f"{message.chat.id}"].append_types_debit(i)
             print(i)
         db.record_types(
-            userID=message.chat.id,
+            telegram_id=message.chat.id,
             types=users[f"{message.chat.id}"].get_types_debit(),
             debit=True,
         )
@@ -125,7 +125,7 @@ def select_types_credit(message):
             users[f"{message.chat.id}"].append_types_credit(i)
             print(i)
         db.record_types(
-            userID=message.chat.id,
+            telegram_id=message.chat.id,
             types=users[f"{message.chat.id}"].get_types_credit(),
             debit=False,
         )
@@ -405,6 +405,7 @@ def select_amount(message):
                 markup.add(i)
             back = types.KeyboardButton("Вернуться в меню")
             markup.add(back)
+            
             msg = bot.reply_to(
                 message,
                 f"Укажите категорию: {users[f'{message.chat.id}'].get_types_debit()}",
@@ -417,6 +418,10 @@ def select_amount(message):
             )
         else:
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            for i in users[f"{message.chat.id}"].get_types_credit():
+                markup.add(i)
+            back = types.KeyboardButton("Вернуться в меню")
+            markup.add(back)
             msg = bot.reply_to(
                 message,
                 f"Укажите категорию: {users[f'{message.chat.id}'].get_types_credit()}",
@@ -484,7 +489,7 @@ def select_type(message):
             )
             bot.register_next_step_handler(msg, menu)
             db.data_record(
-                userID=message.chat.id,
+                telegram_id=message.chat.id,
                 amount=users[f"{message.chat.id}"].get_data("amount"),
                 date=users[f"{message.chat.id}"].get_data("date"),
                 type=users[f"{message.chat.id}"].get_data("type"),
@@ -512,7 +517,7 @@ def select_priority(message):
     try:
         users[f"{message.chat.id}"].set_data(index="priority", value=message.text)
         db.data_record(
-            userID=message.chat.id,
+            telegram_id=message.chat.id,
             amount=users[f"{message.chat.id}"].get_data("amount"),
             date=users[f"{message.chat.id}"].get_data("date"),
             type=users[f"{message.chat.id}"].get_data("type"),
@@ -623,7 +628,7 @@ def get_excel(message):
 
 def database_query(message, send_mess=True, debit=True):
     if message.text == "За последние 7 дней":
-        data1 = db.data_getting(userID=message.chat.id, debit=debit)
+        data1 = db.data_getting(telegram_id=message.chat.id, debit=debit)
     else:
         if message.text == "За последний месяц":
             dayS = 31
@@ -635,7 +640,7 @@ def database_query(message, send_mess=True, debit=True):
             dayS = 31 * 12 - 6  # вычетаем 6 т.к. есть месяца с 31 и 30 днями
 
         data1 = db.data_getting(
-            userID=message.chat.id,
+            telegram_id=message.chat.id,
             debit=debit,
             date_from=str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
             date_to=str(datetime.datetime.now().date()),
@@ -709,7 +714,7 @@ def select_date_2(message):
 def make_diorama(message, debit=True):
     dioramaData = {}
     if message.text == "За последние 7 дней":
-        data1 = db.data_getting(userID=message.chat.id, debit=debit)
+        data1 = db.data_getting(telegram_id=message.chat.id, debit=debit)
     else:
         if message.text == "За последний месяц":
             dayS = 31
@@ -729,7 +734,7 @@ def make_diorama(message, debit=True):
         if i == None:
             continue
         data1 = db.data_getting(
-            userID=message.chat.id,
+            telegram_id=message.chat.id,
             debit=debit,
             type=i,
             date_from=str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
@@ -773,10 +778,19 @@ def statistics(message, debit=True):
     periodCredit = 0
 
     data1 = db.data_getting(
-        userID=message.chat.id,
+        telegram_id=message.chat.id,
         debit=True,
         date_from=str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
         date_to=str(datetime.datetime.now().date()),
+    )
+    
+    data2 = db.data_getting(
+        telegram_id=message.chat.id,
+        debit=True,
+        date_from=str(datetime.datetime.now() - datetime.timedelta(dayS + dayS * 2))[
+            0:10:
+        ],
+        date_to=str(datetime.datetime.now() - datetime.timedelta(dayS * 2))[0:10:],
     )
 
     for j in data1:
@@ -785,15 +799,8 @@ def statistics(message, debit=True):
             step += 1
             if step == 3:
                 periodDebit += float(str(k))
-
-    data1 = db.data_getting(
-        userID=message.chat.id,
-        debit=False,
-        date_from=str(datetime.datetime.now() - datetime.timedelta(dayS))[0:10:],
-        date_to=str(datetime.datetime.now().date()),
-    )
-
-    for j in data1:
+                
+    for j in data2:
         step = 0
         for k in j:
             step += 1
@@ -803,14 +810,6 @@ def statistics(message, debit=True):
     previousMonthDebit = 0
     previousMonthCredit = 0
 
-    data2 = db.data_getting(
-        userID=message.chat.id,
-        debit=True,
-        date_from=str(datetime.datetime.now() - datetime.timedelta(dayS + dayS * 2))[
-            0:10:
-        ],
-        date_to=str(datetime.datetime.now() - datetime.timedelta(dayS * 2))[0:10:],
-    )
 
     for j in data1:
         step = 0
@@ -819,16 +818,8 @@ def statistics(message, debit=True):
             if step == 3:
                 previousMonthDebit += float(str(k))
 
-    data2 = db.data_getting(
-        userID=message.chat.id,
-        debit=True,
-        date_from=str(datetime.datetime.now() - datetime.timedelta(dayS + dayS * 2))[
-            0:10:
-        ],
-        date_to=str(datetime.datetime.now() - datetime.timedelta(dayS * 2))[0:10:],
-    )
 
-    for j in data1:
+    for j in data2:
         step = 0
         for k in j:
             step += 1
@@ -840,7 +831,7 @@ def statistics(message, debit=True):
 
     for i in range(12):
         data3 = db.data_getting(
-            userID=message.chat.id,
+            telegram_id=message.chat.id,
             debit=True,
             date_from=str(datetime.datetime.now() - datetime.timedelta(dayS + i * 30))[
                 0:10:
@@ -906,7 +897,7 @@ def delete_data(message):
         return
     try:
         data = db.data_getting(
-            userID=message.chat.id,
+            telegram_id=message.chat.id,
             date_from=users[f"{message.chat.id}"].get_data("date"),
             date_to=users[f"{message.chat.id}"].get_data("date"),
             debit=users[f"{message.chat.id}"].get_data("debit"),
@@ -949,7 +940,7 @@ def delete_data_step2(message):
     try:
         if message.text == "Да":
             req = db.data_delete(
-                userID=message.chat.id,
+                telegram_id=message.chat.id,
                 date=users[f"{message.chat.id}"].get_data("date"),
                 amount=users[f"{message.chat.id}"].get_data("amount"),
                 debit=users[f"{message.chat.id}"].get_data("debit"),
@@ -993,7 +984,7 @@ def delete_type(message):
             return
 
         db.type_record_delete(
-            userID=message.chat.id,
+            telegram_id=message.chat.id,
             debit=users[f"{message.chat.id}"].get_data(index="debit"),
             type=message.text,
         )

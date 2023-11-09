@@ -58,21 +58,37 @@ class DB:
             self.conn.commit()
             logger.exception(f"Function createNewDB not completed.")
 
-    def add_user(self, telegram_id: int | str, ban: bool) -> bool:
+    def add_user(self, telegram_id: int | str, ban: bool) -> None:
         Nan = "{Nan}"
         try:
             self.cursor.execute(
-                f"INSERT INTO users (telegram_id, ban, debit_type, credit_type) VALUES ({telegram_id}, {ban}, '{Nan}'::text[] , '{Nan}'::text[])"
+                f"SELECT id FROM users WHERE telegram_id = {int(telegram_id)}"
             )
+            id = int(self.cursor.fetchall()[0][0])
             self.conn.commit()
-            logger.info(f"A new user has been added. telegram_id: {telegram_id}")
-            return True
-        except Exception as e:
+        except:
+            try:
+                self.cursor.execute(
+                    f"INSERT INTO users (telegram_id, ban, debit_type, credit_type) VALUES ({telegram_id}, {ban}, '{Nan}'::text[] , '{Nan}'::text[])"
+                )
+                self.conn.commit()
+                logger.info(f"A new user has been added. telegram_id: {telegram_id}")
+            except Exception as e:
+                self.conn.commit()
+                logger.exception(
+                    f"Failed to create a new user. telegram_id: {telegram_id} \n \
+                    EXEPTION: {e}"
+                )
+            
+    def get_user(self, telegram_id: int | str) -> bool:
+        try:
+            self.cursor.execute(
+                    f"SELECT id FROM users WHERE telegram_id = {int(telegram_id)}"
+                )
+            user = self.cursor.fetchall()
             self.conn.commit()
-            logger.exception(
-                f"Failed to create a new user. telegram_id: {telegram_id} \n \
-                EXEPTION: {e}"
-            )
+            return bool(user)
+        except:
             return False
 
     def data_record(
