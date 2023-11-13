@@ -217,7 +217,7 @@ class DB:
                 if debit:
                     req = f"SELECT * FROM debit WHERE date >= '{date_from}' AND date <= '{date_to}'"
                 else:
-                    req = f"SELECT * FROM debit WHERE date >= '{date_from}' AND date <= '{date_to}'"
+                    req = f"SELECT * FROM credit WHERE date >= '{date_from}' AND date <= '{date_to}'"
             self.cursor.execute(req)
             res = self.cursor.fetchall()
             self.conn.commit()
